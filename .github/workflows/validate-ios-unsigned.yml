@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  build-ios-simulator:
+  build-ios-device:
     runs-on: macos-latest
     timeout-minutes: 90
     env:
@@ -18,7 +18,7 @@ jobs:
       QT_MIRROR: https://mirrors.ocf.berkeley.edu/qt/
       DEFAULTVPN_REF: fix/ios-wireguard-liveness
       # The branch is checked out by name so every validation run exercises its latest PR head.
-      AMNEZIAWG_APPLE_SHA: 3690f4c95d4350cc2bc373b3a7badaecee206a41
+      AMNEZIAWG_APPLE_SHA: 2aa9d1c508ea23b31e729610129e54bcfa7d5e5e
 
     steps:
       - name: Install desktop Qt
@@ -80,15 +80,17 @@ jobs:
             -DQT_HOST_PATH="$QT_MACOS_ROOT_DIR" \
             -DDEPLOY=OFF
 
-      - name: Build iOS Simulator without signing
+      - name: Build generic iOS device without signing
         run: |
           set +e
           xcodebuild \
             -project build-ios-unsigned/DefaultVPN.xcodeproj \
             -scheme DefaultVPN \
             -configuration Debug \
-            -sdk iphonesimulator \
-            -destination "generic/platform=iOS Simulator" \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=YES \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
