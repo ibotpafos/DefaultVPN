@@ -17,6 +17,7 @@ jobs:
       QT_VERSION: 6.10.1
       QT_MIRROR: https://mirrors.ocf.berkeley.edu/qt/
       DEFAULTVPN_REF: fix/ios-wireguard-liveness
+      # The branch is checked out by name so every validation run exercises its latest PR head.
       AMNEZIAWG_APPLE_SHA: 3690f4c95d4350cc2bc373b3a7badaecee206a41
 
     steps:
