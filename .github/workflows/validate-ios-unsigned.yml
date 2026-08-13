@@ -18,7 +18,7 @@ jobs:
       QT_MIRROR: https://mirrors.ocf.berkeley.edu/qt/
       DEFAULTVPN_REF: fix/ios-wireguard-liveness
       # The branch is checked out by name so every validation run exercises its latest PR head.
-      AMNEZIAWG_APPLE_SHA: 850cdbe3a243025611a1c3d71b733806903b7f9d
+      AMNEZIAWG_APPLE_SHA: 850cdbe42c2ed1278529cf370ad2dad2c970bf64
 
     steps:
       - name: Install desktop Qt
