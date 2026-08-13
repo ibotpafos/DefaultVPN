@@ -1,0 +1,93 @@
+name: Validate iOS unsigned
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/validate-ios-unsigned.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build-ios-simulator:
+    runs-on: macos-latest
+    timeout-minutes: 90
+    env:
+      QT_VERSION: 6.10.1
+      QT_MIRROR: https://mirrors.ocf.berkeley.edu/qt/
+      DEFAULTVPN_REF: fix/ios-wireguard-liveness
+      AMNEZIAWG_APPLE_SHA: 3690f4c95d4350cc2bc373b3a7badaecee206a41
+
+    steps:
+      - name: Install desktop Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: mac
+          target: desktop
+          modules: qtremoteobjects qt5compat qtshadertools qtmultimedia
+          arch: clang_64
+          dir: ${{ runner.temp }}
+          set-env: true
+          extra: --base ${{ env.QT_MIRROR }}
+
+      - name: Install iOS Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: mac
+          target: ios
+          modules: qtremoteobjects qt5compat qtshadertools qtmultimedia
+          dir: ${{ runner.temp }}
+          setup-python: true
+          set-env: true
+          extra: --external 7z --base ${{ env.QT_MIRROR }}
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: false
+
+      - name: Checkout DefaultVPN validation branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEFAULTVPN_REF }}
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Checkout fixed amneziawg-apple
+        run: |
+          git -C client/3rd/amneziawg-apple remote add validation https://github.com/ibotpafos/amneziawg-apple.git
+          git -C client/3rd/amneziawg-apple fetch --depth 1 validation "$AMNEZIAWG_APPLE_SHA"
+          git -C client/3rd/amneziawg-apple checkout --detach "$AMNEZIAWG_APPLE_SHA"
+          test "$(git -C client/3rd/amneziawg-apple rev-parse HEAD)" = "$AMNEZIAWG_APPLE_SHA"
+
+      - name: Install build dependencies
+        run: |
+          python3 -m pip install --disable-pip-version-check jsonschema jinja2
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          "$(go env GOPATH)/bin/gomobile" init
+
+      - name: Configure unsigned iOS project
+        env:
+          QT_BIN_DIR: ${{ runner.temp }}/Qt/${{ env.QT_VERSION }}/ios/bin
+          QT_MACOS_ROOT_DIR: ${{ runner.temp }}/Qt/${{ env.QT_VERSION }}/macos
+        run: |
+          "$QT_BIN_DIR/qt-cmake" . -B build-ios-unsigned -GXcode \
+            -DQT_HOST_PATH="$QT_MACOS_ROOT_DIR" \
+            -DDEPLOY=OFF
+
+      - name: Build iOS Simulator without signing
+        run: |
+          xcodebuild \
+            -project build-ios-unsigned/DefaultVPN.xcodeproj \
+            -scheme DefaultVPN \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "generic/platform=iOS Simulator" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
